@@ -99,35 +99,34 @@ echo "You appear to be on a ${distro}-style distribution"
 # - git
 # - docker
 # - docker compose
+
 missing=""
 if which python3 &> /dev/null ; then
-	python3 -c "import sys; sys.exit(1) if sys.version_info.major != 3 or sys.version_info.minor < 6" &> /dev/null && missing="python3 "
-	python3 -c "import requests" &>/dev/null || missing="python3-requests "
-	python3 -c "import flask" &>/dev/null || missing="python3-flask "
-	python3 -c "import sys; import flask; sys.exit(1) if flask.__version__ < '2.0' else sys.exit(0)" &> /dev/null || missing="python3-flask "
-else
-	missing="python3 python3-flask python3-requests "
-fi
-which git &> /dev/null || missing+="git "
-if which docker &> /dev/null ; then
-	 ! docker compose version &> /dev/null && ! docker-compose version &> /dev/null && missing+="docker-compose "
-else
-    if [ "$distro" == "debian" ]; then
-        missing+="docker.io docker-compose "
-    else
-        missing+="docker docker-compose "
+    # Prüfe die Python-Version (erforderlich: >= 3.6)
+    python3 -c "import sys; exit(0) if sys.version_info >= (3,6) else exit(1)" &> /dev/null
+    if [ $? -ne 0 ]; then
+        missing+="python3 "
     fi
-fi
 
-if [[ $missing != "" ]] ; then
-	inst=""
-        [ "$distro" == "fedora" ] && inst="dnf install -y"
-        [ "$distro" == "suse" ] && inst="zypper install -y"
-        [ "$distro" == "debian" ] && inst="apt-get install -y"
+    # Prüfe, ob 'requests' installiert ist
+    python3 -c "import requests" &> /dev/null
+    if [ $? -ne 0 ]; then
+        missing+="python3-requests "
+    fi
 
-	echo "Please install the missing packages before re-running this script:"
-	echo "$inst $missing"
-	exit 1
+    # Prüfe, ob 'flask' installiert ist
+    python3 -c "import flask" &> /dev/null
+    if [ $? -ne 0 ]; then
+        missing+="python3-flask "
+    else
+        # Prüfe die Version von 'flask' (erforderlich: >= 2.0)
+        python3 -c "import flask; exit(0) if flask.__version__ >= '2.0' else exit(1)" &> /dev/null
+        if [ $? -ne 0 ]; then
+            missing+="python3-flask "
+        fi
+    fi
+else
+    missing+="python3 python3-flask python3-requests "
 fi
 
 # ok, now we should have all we need, let's get started
